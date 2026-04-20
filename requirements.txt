@@ -1,0 +1,14 @@
+fastapi
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-groq>=0.2.0
+langchain-ollama
+langchain-postgres
+langgraph>=0.2.0
+langmem>=0.0.15
+psycopg2-binary
+python-dotenv
+sqlalchemy>=2.0.0
+sqlglot
+typing-extensions>=4.9.0
+uvicorn

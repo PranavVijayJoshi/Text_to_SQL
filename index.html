@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Chat</title>
+    <style>
+        body { font-family: Arial; margin: 40px; color: #1f2937; }
+        #chat { border: 1px solid #ccc; padding: 12px; height: 520px; overflow-y: auto; }
+        .user { color: #1d4ed8; }
+        .bot { border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px; }
+        .status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .success { background: #dcfce7; color: #166534; }
+        .failed { background: #fee2e2; color: #991b1b; }
+        .retrying { background: #fef3c7; color: #92400e; }
+        .answer { white-space: pre-wrap; margin: 10px 0; }
+        .meta { color: #4b5563; font-size: 13px; margin: 6px 0; }
+        details { margin-top: 8px; }
+        pre { background: #f3f4f6; padding: 10px; overflow-x: auto; white-space: pre-wrap; }
+        table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+        th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #f9fafb; }
+        .error { color: #b91c1c; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+<h2>AI Chat Interface</h2>
+
+<div id="chat"></div>
+
+<input type="text" id="input" placeholder="Ask something..." style="width:80%">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+let conversationHistory = [];
+
+function appendUserMessage(text) {
+    const chat = document.getElementById("chat");
+    const line = document.createElement("p");
+    line.className = "user";
+
+    const bold = document.createElement("b");
+    bold.textContent = "You: ";
+    line.appendChild(bold);
+    line.appendChild(document.createTextNode(text));
+
+    chat.appendChild(line);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function appendText(parent, className, text) {
+    const element = document.createElement("div");
+    element.className = className;
+    element.textContent = text;
+    parent.appendChild(element);
+    return element;
+}
+
+function appendRowsTable(parent, rows) {
+    if (!rows || rows.length === 0) {
+        appendText(parent, "meta", "No rows returned.");
+        return;
+    }
+
+    const columns = Array.from(
+        rows.reduce((set, row) => {
+            Object.keys(row).forEach((key) => set.add(key));
+            return set;
+        }, new Set())
+    );
+
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+
+    columns.forEach((column) => {
+        const th = document.createElement("th");
+        th.textContent = column;
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        columns.forEach((column) => {
+            const td = document.createElement("td");
+            const value = row[column];
+            td.textContent = value === null || value === undefined ? "" : String(value);
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    parent.appendChild(table);
+}
+
+function appendBotResponse(data) {
+    const chat = document.getElementById("chat");
+    const wrapper = document.createElement("div");
+    wrapper.className = "bot";
+
+    const status = document.createElement("span");
+    status.className = `status ${data.status || "failed"}`;
+    status.textContent = (data.status || "failed").toUpperCase();
+    wrapper.appendChild(status);
+
+    appendText(wrapper, "answer", data.answer || "");
+    appendText(wrapper, "meta", `Rows returned: ${data.rows_returned ?? 0} | Cache hit: ${data.cache_hit ? "yes" : "no"} | Time: ${data.time_taken_seconds ?? 0}s`);
+
+    if (data.error_message) {
+        appendText(wrapper, "error", data.error_message);
+    }
+
+    const sqlDetails = document.createElement("details");
+    const sqlSummary = document.createElement("summary");
+    sqlSummary.textContent = "SQL query";
+    sqlDetails.appendChild(sqlSummary);
+
+    const sqlBlock = document.createElement("pre");
+    sqlBlock.textContent = data.sql || "No SQL generated.";
+    sqlDetails.appendChild(sqlBlock);
+    wrapper.appendChild(sqlDetails);
+
+    const rowsDetails = document.createElement("details");
+    const rowsSummary = document.createElement("summary");
+    rowsSummary.textContent = "Rows";
+    rowsDetails.appendChild(rowsSummary);
+    appendRowsTable(rowsDetails, data.rows || []);
+    wrapper.appendChild(rowsDetails);
+
+    chat.appendChild(wrapper);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+async function sendMessage() {
+    const inputBox = document.getElementById("input");
+    const message = inputBox.value.trim();
+
+    if (!message) return;
+
+    appendUserMessage(message);
+    inputBox.value = "";
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/query", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                user_query: message,
+                user_id: "user_128",
+                conversation_history: conversationHistory
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Request failed");
+        }
+
+        conversationHistory = data.conversation_history || [];
+        appendBotResponse(data);
+
+    } catch (error) {
+        appendBotResponse({
+            status: "failed",
+            answer: "The request failed.",
+            sql: "",
+            rows: [],
+            rows_returned: 0,
+            cache_hit: false,
+            time_taken_seconds: 0,
+            error_message: error.message || String(error)
+        });
+    }
+}
+</script>
+
+</body>
+</html>
