@@ -1,29 +1,24 @@
-# nodes/query_cache.py
 import hashlib
 import json
 import time
 from state import AgentState
 
 
-# In-memory cache for this session.
-# In production, swap this to Redis or another shared cache if you run multiple workers.
 _cache: dict[str, dict] = {}
 CACHE_TTL_SECONDS = 3600
 
 
 def _query_hash(state: AgentState) -> str:
-    history = state.get("conversation_history", [])
-    recent_history = history[-3:] if isinstance(history, list) else []
-
+    """
+    Hash only stable, query-defining fields.
+    Excludes conversation_history, query_plan, relevant_tables — all of
+    these change between calls and would cause identical queries to miss cache.
+    """
     payload = {
         "user_id": state.get("user_id"),
         "query": " ".join(state.get("user_query", "").lower().strip().split()),
-        "query_plan": state.get("query_plan", {}),
         "db": state.get("db_connection_string"),
-        "history": recent_history,
-        "tables": sorted(state.get("relevant_tables", [])),
     }
-
     raw = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -36,13 +31,11 @@ def query_cache(state: AgentState) -> AgentState:
     if entry and (now - entry["timestamp"]) < CACHE_TTL_SECONDS:
         print(f"[cache hit] returning cached result for: {state['user_query']}")
         history = list(state.get("conversation_history", []))
-        history.append(
-            {
-                "query": state["user_query"],
-                "summary": entry["final_answer"],
-                "sql": entry["sql"],
-            }
-        )
+        history.append({
+            "query": state["user_query"],
+            "summary": entry["final_answer"],
+            "sql": entry["sql"],
+        })
         return {
             **state,
             "generated_sql": entry["sql"],

@@ -11,15 +11,17 @@ def memory_update(state:AgentState)-> AgentState:
     semantic_response = llm.invoke([
         SystemMessage(content=(
             "You are a database knowledge extractor. "
-            "Given a SQL query and its outcome, identify any reusable facts "
-            "about the database schema or domain that would help future queries.\n\n"
-            "Examples of good facts:\n"
-            "Signup_date column is in the YYYY-MM-DD format"
-            #"- 'orders and customers join on customer_id'\n"
-            #"- 'revenue is stored in cents not dollars'\n"
-            #"- 'deleted records have deleted_at set, not a boolean flag'\n\n"
+            "Given a SQL query and its outcome, identify reusable facts "
+            "about the database schema that would help future queries.\n\n"
+            "Good facts to extract:\n"
+            "- Join paths: which columns connect tables (e.g. 'orders joins customers on customer_id')\n"
+            "- Revenue/amount location: which column and table holds monetary values\n"
+            "- Date column names and their formats\n"
+            "- Primary key column names per table\n"
+            "- Any non-obvious column names (e.g. 'product price is in products.price, not order_items')\n\n"
+            "Do NOT extract facts that are obvious from the schema alone.\n"
             "If there are no new facts worth saving, reply with: NONE\n"
-            "Otherwise list each fact on a new line."
+            "Otherwise list each fact on a new line, no bullet points."
         )),
         HumanMessage(content=(
             f"User query: {state['user_query']}\n"

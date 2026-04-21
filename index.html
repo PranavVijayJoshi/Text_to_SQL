@@ -1,155 +1,313 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat - SQL Agent</title>
     <style>
-        body { font-family: Arial; margin: 40px; color: #1f2937; }
-        #chat { border: 1px solid #ccc; padding: 12px; height: 520px; overflow-y: auto; }
-        .user { color: #1d4ed8; }
-        .bot { border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px; }
-        .status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        :root {
+            --primary: #1d4ed8;
+            --bg: #f3f4f6;
+            --border: #e5e7eb;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: white;
+            padding: 15px 40px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-container {
+            background: white;
+            padding: 20px 40px;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+
+        .input-group {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            font-size: 15px;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(29,78,216,0.1); }
+
+        button#send-btn {
+            padding: 0 28px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button#send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .bot-block {
+            display: flex;
+            gap: 24px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #e5e7eb;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .user-block {
+            align-self: flex-start;
+            background: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 18px 18px 2px 18px;
+            max-width: 70%;
+            margin-bottom: 5px;
+        }
+
+        .content-left { flex: 1.2; min-width: 0; }
+
+        .content-right {
+            flex: 0.8;
+            min-width: 320px;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            height: fit-content;
+            max-height: 450px;
+        }
+
+        .sql-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-bottom: 1px solid var(--border);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .sql-label { font-size: 11px; font-weight: bold; color: #64748b; }
+
+        .copy-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .sql-body { padding: 15px; overflow-y: auto; background: #fff; border-radius: 0 0 10px 10px; }
+        pre { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 13px; }
+
+        .status { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-bottom: 12px; }
         .success { background: #dcfce7; color: #166534; }
         .failed { background: #fee2e2; color: #991b1b; }
-        .retrying { background: #fef3c7; color: #92400e; }
-        .answer { white-space: pre-wrap; margin: 10px 0; }
-        .meta { color: #4b5563; font-size: 13px; margin: 6px 0; }
-        details { margin-top: 8px; }
-        pre { background: #f3f4f6; padding: 10px; overflow-x: auto; white-space: pre-wrap; }
-        table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
-        th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #f9fafb; }
-        .error { color: #b91c1c; white-space: pre-wrap; }
+
+        .reasoning-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 20px;
+            background: #fff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            color: #1e40af;
+        }
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2px solid #3b82f6;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .table-container { margin-top: 15px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+        th { background: #f8fafc; }
     </style>
 </head>
 <body>
 
-<h2>AI Chat Interface</h2>
+<header>
+    <h2>Natural Language SQL Agent</h2>
+</header>
 
 <div id="chat"></div>
 
-<input type="text" id="input" placeholder="Ask something..." style="width:80%">
-<button onclick="sendMessage()">Send</button>
+<div class="input-container">
+    <div class="input-group">
+        <input type="text" id="input" placeholder="Type your query and press Enter...">
+        <button id="send-btn" onclick="sendMessage()">Send Query</button>
+    </div>
+</div>
 
 <script>
 let conversationHistory = [];
+const reasoningSteps = [
+    "🔍 Parsing intent and extracting key entities...",
+    "🧠 Mapping business question to database schema...",
+    "🔗 Inferring relationships between tables...",
+    "⚙️ Constructing optimized SQL query...",
+    "🛡️ Applying safety and validation checks...",
+    "📊 Executing query on database...",
+    "🧮 Aggregating and formatting results...",
+    "✨ Preparing final response..."
+];
 
-function appendUserMessage(text) {
-    const chat = document.getElementById("chat");
-    const line = document.createElement("p");
-    line.className = "user";
+// Re-binding the events clearly to ensure they work
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById("input");
+    const btn = document.getElementById("send-btn");
 
-    const bold = document.createElement("b");
-    bold.textContent = "You: ";
-    line.appendChild(bold);
-    line.appendChild(document.createTextNode(text));
-
-    chat.appendChild(line);
-    chat.scrollTop = chat.scrollHeight;
-}
-
-function appendText(parent, className, text) {
-    const element = document.createElement("div");
-    element.className = className;
-    element.textContent = text;
-    parent.appendChild(element);
-    return element;
-}
-
-function appendRowsTable(parent, rows) {
-    if (!rows || rows.length === 0) {
-        appendText(parent, "meta", "No rows returned.");
-        return;
-    }
-
-    const columns = Array.from(
-        rows.reduce((set, row) => {
-            Object.keys(row).forEach((key) => set.add(key));
-            return set;
-        }, new Set())
-    );
-
-    const table = document.createElement("table");
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-
-    columns.forEach((column) => {
-        const th = document.createElement("th");
-        th.textContent = column;
-        headerRow.appendChild(th);
+    btn.addEventListener('click', sendMessage);
+    
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
     });
+});
 
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    rows.forEach((row) => {
-        const tr = document.createElement("tr");
-        columns.forEach((column) => {
-            const td = document.createElement("td");
-            const value = row[column];
-            td.textContent = value === null || value === undefined ? "" : String(value);
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-    parent.appendChild(table);
-}
-
-function appendBotResponse(data) {
+function createInteractionBlock(question) {
     const chat = document.getElementById("chat");
+
+    const userDiv = document.createElement("div");
+    userDiv.className = "user-block";
+    userDiv.textContent = question;
+    chat.appendChild(userDiv);
+
     const wrapper = document.createElement("div");
-    wrapper.className = "bot";
-
-    const status = document.createElement("span");
-    status.className = `status ${data.status || "failed"}`;
-    status.textContent = (data.status || "failed").toUpperCase();
-    wrapper.appendChild(status);
-
-    appendText(wrapper, "answer", data.answer || "");
-    appendText(wrapper, "meta", `Rows returned: ${data.rows_returned ?? 0} | Cache hit: ${data.cache_hit ? "yes" : "no"} | Time: ${data.time_taken_seconds ?? 0}s`);
-
-    if (data.error_message) {
-        appendText(wrapper, "error", data.error_message);
-    }
-
-    const sqlDetails = document.createElement("details");
-    const sqlSummary = document.createElement("summary");
-    sqlSummary.textContent = "SQL query";
-    sqlDetails.appendChild(sqlSummary);
-
-    const sqlBlock = document.createElement("pre");
-    sqlBlock.textContent = data.sql || "No SQL generated.";
-    sqlDetails.appendChild(sqlBlock);
-    wrapper.appendChild(sqlDetails);
-
-    const rowsDetails = document.createElement("details");
-    const rowsSummary = document.createElement("summary");
-    rowsSummary.textContent = "Rows";
-    rowsDetails.appendChild(rowsSummary);
-    appendRowsTable(rowsDetails, data.rows || []);
-    wrapper.appendChild(rowsDetails);
-
+    wrapper.className = "bot-block";
     chat.appendChild(wrapper);
+
+    const loader = document.createElement("div");
+    loader.className = "reasoning-box";
+    loader.innerHTML = `<div class="spinner"></div> <span id="reasoning-text">${reasoningSteps[0]}</span>`;
+    wrapper.appendChild(loader);
+
     chat.scrollTop = chat.scrollHeight;
+
+    let stepIdx = 0;
+    const interval = setInterval(() => {
+        stepIdx = (stepIdx + 1) % reasoningSteps.length;
+        const textElem = loader.querySelector("#reasoning-text");
+        if(textElem) textElem.textContent = reasoningSteps[stepIdx];
+    }, 5000);
+
+    return { wrapper, interval };
+}
+
+function renderBotResponse(wrapper, data) {
+    wrapper.innerHTML = ""; 
+    const left = document.createElement("div");
+    left.className = "content-left";
+    const right = document.createElement("div");
+    right.className = "content-right";
+
+    left.innerHTML = `
+        <span class="status ${data.status || 'failed'}">${(data.status || 'FAILED').toUpperCase()}</span>
+        <div class="answer" style="line-height:1.6; margin-bottom:15px;">${data.answer || ''}</div>
+        <details style="margin-top:15px; font-size:13px;">
+            <summary style="cursor:pointer; color:var(--primary); font-weight:500;">View Data Results</summary>
+            ${appendRowsTable(data.rows)}
+        </details>
+    `;
+
+    const escapedSql = (data.sql || '')
+    .replace(/`/g, '\\`')
+    .replace(/\\/g, '\\\\');
+
+    right.innerHTML = `
+        <div class="sql-header">
+            <span class="sql-label">Generated SQL</span>
+            <button class="copy-btn" onclick="copySQL(this, \`${escapedSql}\`)">Copy SQL</button>
+        </div>
+        <div class="sql-body"><pre>${data.sql || '-- No SQL generated'}</pre></div>
+    `;
+
+    wrapper.appendChild(left);
+    wrapper.appendChild(right);
+    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+}
+
+function appendRowsTable(rows) {
+    if (!rows || rows.length === 0) return "<p style='font-size:12px; color:gray;'>No rows returned.</p>";
+    const columns = Object.keys(rows[0]);
+    let html = "<div class='table-container'><table><thead><tr>";
+    columns.forEach(col => html += `<th>${col}</th>`);
+    html += "</tr></thead><tbody>";
+    rows.forEach(row => {
+        html += "<tr>";
+        columns.forEach(col => html += `<td>${row[col] ?? ""}</td>`);
+        html += "</tr>";
+    });
+    html += "</tbody></table></div>";
+    return html;
+}
+
+function copySQL(btn, sqlText) {
+    navigator.clipboard.writeText(sqlText);
+    const originalText = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = originalText; }, 2000);
 }
 
 async function sendMessage() {
     const inputBox = document.getElementById("input");
+    const sendBtn = document.getElementById("send-btn");
     const message = inputBox.value.trim();
-
+    
     if (!message) return;
 
-    appendUserMessage(message);
+    // Prevent double clicking
+    sendBtn.disabled = true;
+    const { wrapper, interval } = createInteractionBlock(message);
     inputBox.value = "";
 
     try {
         const response = await fetch("http://127.0.0.1:8000/query", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 user_query: message,
                 user_id: "user_128",
@@ -158,23 +316,19 @@ async function sendMessage() {
         });
 
         const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.detail || "Request failed");
-        }
+        clearInterval(interval);
+        sendBtn.disabled = false;
 
+        if (!response.ok) throw new Error(data.detail || "Request failed");
         conversationHistory = data.conversation_history || [];
-        appendBotResponse(data);
-
+        renderBotResponse(wrapper, data);
     } catch (error) {
-        appendBotResponse({
+        clearInterval(interval);
+        sendBtn.disabled = false;
+        renderBotResponse(wrapper, {
             status: "failed",
-            answer: "The request failed.",
-            sql: "",
-            rows: [],
-            rows_returned: 0,
-            cache_hit: false,
-            time_taken_seconds: 0,
-            error_message: error.message || String(error)
+            answer: "Error: " + error.message,
+            sql: "", rows: [], rows_returned: 0
         });
     }
 }

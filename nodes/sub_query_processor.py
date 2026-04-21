@@ -86,6 +86,14 @@ def _validate_syntax(sql: str) -> list[str]:
         return [f"SQL syntax error: {exc}"]
 
 
+def _history_text(history: list[dict]) -> str:
+    lines = []
+    for turn in history[-3:]:
+        if isinstance(turn, dict):
+            lines.append(f"User: {turn.get('query', '')}\nSQL: {turn.get('sql', '')}")
+    return "\n\n".join(lines) if lines else "None"
+
+
 def _generate_node_sql(
     node: dict,
     completed: dict,
@@ -96,6 +104,8 @@ def _generate_node_sql(
     schema_text = _schema_for_node(node.get("tables", []), state)
     cte_text = _cte_descriptions(node.get("depends_on", []), completed)
     semantic_facts = "\n".join(f"- {f}" for f in state.get("semantic_facts", [])) or "None"
+    procedural_rules = "\n".join(f"- {r}" for r in state.get("procedural_rules", [])) or "None"
+    history_text = _history_text(state.get("conversation_history", []))
 
     retry_block = ""
     if error_feedback:
@@ -113,15 +123,19 @@ def _generate_node_sql(
                 "2. Use ONLY tables/columns listed in the schema. Never invent columns.\n"
                 "3. If CTEs are listed, reference them by name in FROM — do not re-derive their data.\n"
                 "4. Use LOWER() for case-insensitive string filters.\n"
-                "5. Use EXTRACT(YEAR FROM <date_col>) = EXTRACT(YEAR FROM CURRENT_DATE) for current-year filters.\n"
+                "5. For date filters: if the query specifies an explicit date, month, or year "
+                "(e.g. 'April 2024', 'last 15 days of April 2024'), use those literal values directly. "
+                "Only use CURRENT_DATE when the query says 'today', 'current year', or 'this year'.\n"
                 "6. Use GROUP BY for any aggregation.\n"
                 "7. For top-1-per-group, use ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC) in a subquery.\n"
                 "8. Always qualify column names with their table or CTE name.\n\n"
-                f"Reusable database facts:\n{semantic_facts}"
+                f"Reusable schema facts:\n{semantic_facts}\n\n"
+                f"Procedural rules from past failures:\n{procedural_rules}"
             )
         ),
         HumanMessage(
             content=(
+                f"Conversation history (for context/pronoun resolution):\n{history_text}\n\n"
                 f"Intent: {node['intent']}\n\n"
                 f"Database schema:\n{schema_text}\n\n"
                 f"{cte_text}"
