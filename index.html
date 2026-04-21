@@ -247,6 +247,11 @@ function renderBotResponse(wrapper, data) {
     left.innerHTML = `
         <span class="status ${data.status || 'failed'}">${(data.status || 'FAILED').toUpperCase()}</span>
         <div class="answer" style="line-height:1.6; margin-bottom:15px;">${data.answer || ''}</div>
+        <div style="font-size:12px; color:#64748b; font-weight: 500;">
+            Rows returned: ${data.rows_returned ?? 0} | 
+            Cache hit: ${data.cache_hit ? 'Yes' : 'No'} | 
+            Time: ${data.time_taken_seconds ?? 0}s
+        </div>
         <details style="margin-top:15px; font-size:13px;">
             <summary style="cursor:pointer; color:var(--primary); font-weight:500;">View Data Results</summary>
             ${appendRowsTable(data.rows)}
@@ -328,7 +333,7 @@ async function sendMessage() {
         renderBotResponse(wrapper, {
             status: "failed",
             answer: "Error: " + error.message,
-            sql: "", rows: [], rows_returned: 0
+            sql: "", rows: [], rows_returned: 0, cache_hit: false, time_taken_seconds: 0
         });
     }
 }

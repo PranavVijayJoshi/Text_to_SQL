@@ -33,6 +33,13 @@ _TIER4_PATTERNS = [
     # Sequential event pattern — requires two passes over the same table
     r"\bfirst\s+(purchase|order).{1,60}(second|next)\s+(purchase|order)\b",
     r"\b(second|next)\s+(purchase|order).{1,60}first\s+(purchase|order)\b",
+    # Recursive hierarchy + aggregation — always multi-level
+    r"\ball\s+(of\s+its\s+|its\s+|their\s+)?(sub-?categor\w*|subcategor\w*|children|descendants?)\b",
+    r"\bsub-?categor\w*\s+(and|combined|together|included)\b",
+    r"\band\s+all\s+(its\s+|their\s+)?sub-?categor\w*\b",
+    r"\bentire\s+(hierarch\w*|tree|category\s+tree)\b",
+    r"\bincluding\s+(all\s+)?(its\s+|their\s+)?(sub-?categor\w*|children|descendants?)\b",
+    r"\brecurs\w*\b",
 ]
 
 # Signals for tier 3: single complex aggregation
@@ -81,12 +88,6 @@ _TIER3_PATTERNS = [
     r"\bwho\s+(has\s+)?(spent|bought|purchased|ordered)\s+the\s+most\b",
     r"\bmost\s+(money|revenue|amount|value|sales)\b",
     r"\b(highest|lowest)\s+(spend|spending|sales|revenue)\s+(per|for|by|in)\b",
-    r"\ball\s+(of\s+its\s+|its\s+|their\s+)?(sub-?categor\w*|subcategor\w*|children|descendants?)\b",
-    r"\bsub-?categor\w*\s+(and|combined|together|included)\b",
-    r"\band\s+all\s+(its\s+|their\s+)?sub-?categor\w*\b",
-    r"\bentire\s+(hierarch\w*|tree|category\s+tree)\b",
-    r"\bincluding\s+(all\s+)?(sub-?categor\w*|children|descendants?)\b",
-    r"\brecurs\w*\b",
 ]
 
 # Signals for tier 2: any aggregation or multi-table concept
