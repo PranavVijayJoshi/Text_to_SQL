@@ -1,3 +1,0 @@
-.env
-Dataset.xlsx
-Q_and_A.txt
