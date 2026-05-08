@@ -351,3 +351,19 @@ sqlglot parses SQL structurally — it understands CTEs, aliases, and nested que
 
 **Why a rule-based guardrail?**
 An LLM guardrail was incorrectly rejecting valid database queries it found "complex" or "ambiguous". Rule-based rejection with a default-allow policy eliminates false rejections entirely. The guardrail's only job is blocking obviously non-database requests — not judging query difficulty.
+
+
+## Running with Docker
+
+1. Copy `.env.example` to `.env` and fill in your credentials
+2. Run:
+```bash
+   docker-compose up --build
+```
+3. API available at `http://localhost:8000`
+4. API docs at `http://localhost:8000/docs`
+
+### Production
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```

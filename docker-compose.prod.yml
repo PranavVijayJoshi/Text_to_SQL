@@ -1,0 +1,24 @@
+version: "3.9"
+
+# Production overrides — use with:
+# docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+
+  db:
+    ports: []                            # do NOT expose DB port in production
+    restart: always
+
+  app:
+    volumes: []                          # no source mount in production
+    command: >
+      uvicorn api:app
+      --host 0.0.0.0
+      --port 8000
+      --workers 4
+      --no-access-log
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G

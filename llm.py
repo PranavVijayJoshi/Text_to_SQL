@@ -32,6 +32,7 @@ _gemini_limiter = InMemoryRateLimiter(
 
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
+    #model="llama-3.1-8b",
     api_key=GROQ_API_KEY,
     temperature=0,
     rate_limiter=_groq_limiter,
