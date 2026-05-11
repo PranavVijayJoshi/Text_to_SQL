@@ -86,6 +86,9 @@ def route_complex_validation(state: AgentState) -> str:
         return "continue"
     if state.get("retry_count", 0) >= MAX_RETRIES:
         return "failed"
+    # If decomposition itself failed (no sub-queries produced), re-run the decomposer
+    if not state.get("sub_queries"):
+        return "redecompose"
     return "retry"
 
 
@@ -269,7 +272,8 @@ def build_graph():
         route_complex_validation,
         {
             "continue": "complex_executor",
-            "retry": "sub_query_processor",   # regenerate sub-queries with error context
+            "retry": "sub_query_processor",
+            "redecompose": "query_decomposer",
             "failed": "complex_validation_failure",
         },
     )

@@ -17,11 +17,30 @@ from state import AgentState
 logger = logging.getLogger(__name__)
 
 
-def _strip_fence(text: str) -> str:
+def _parse_json_list(text: str) -> list:
     text = text.strip()
-    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s*```$", "", text)
-    return text.strip()
+
+    stripped = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+    stripped = re.sub(r"\s*```$", "", stripped).strip()
+    for candidate in (stripped, text):
+        try:
+            data = json.loads(candidate)
+            if isinstance(data, list):
+                return data
+        except json.JSONDecodeError:
+            pass
+
+    # LLM added preamble/postamble — extract the first [...] block
+    match = re.search(r'\[.*\]', text, re.DOTALL)
+    if match:
+        try:
+            data = json.loads(match.group())
+            if isinstance(data, list):
+                return data
+        except json.JSONDecodeError:
+            pass
+
+    return []
 
 
 def _schema_summary(state: AgentState) -> str:
@@ -135,12 +154,7 @@ def query_decomposer(state: AgentState) -> AgentState:
     response = llm_strong.invoke(messages)
     logger.debug("decomposer response: %s", response.content)
 
-    try:
-        nodes = json.loads(_strip_fence(response.content))
-        if not isinstance(nodes, list):
-            nodes = []
-    except (json.JSONDecodeError, Exception):
-        nodes = []
+    nodes = _parse_json_list(response.content)
 
     validated = []
     for node in nodes:

@@ -10,19 +10,29 @@ from state import AgentState
 logger = logging.getLogger(__name__)
 
 
-def _strip_code_fence(text: str) -> str:
-    text = text.strip()
-    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s*```$", "", text)
-    return text.strip()
-
-
 def _parse_json(text: str) -> dict:
-    try:
-        data = json.loads(_strip_code_fence(text))
-        return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError:
-        return {}
+    text = text.strip()
+
+    stripped = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+    stripped = re.sub(r"\s*```$", "", stripped).strip()
+    for candidate in (stripped, text):
+        try:
+            data = json.loads(candidate)
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            pass
+
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        try:
+            data = json.loads(match.group())
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            pass
+
+    return {}
 
 
 def _metadata_text(state: AgentState) -> str:
